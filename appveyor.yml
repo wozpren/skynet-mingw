@@ -1,23 +1,37 @@
 version: 1.0.{build}
+install:
+  - ps: |
+      # 下载并安装 MinGW
+      if (!(Test-Path "C:\mingw")) {
+        $url = "https://sourceforge.net/projects/mingw/files/Installer/mingw-get-setup.exe/download"
+        $out = "C:\mingw-get-setup.exe"
+        (New-Object Net.WebClient).DownloadFile($url, $out)
+        Start-Process -FilePath $out -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait
+      }
+      
+      # 将 MinGW 添加到 PATH
+      $env:PATH = "C:\MinGW\bin;" + $env:PATH
+      [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
+
 build_script:
-- cmd: >-
-    git submodule update --init --recursive
+  - cmd: >-
+      git submodule update --init --recursive
 
-    sh prepare.sh
+      sh prepare.sh
 
-    echo %PATH%
+      echo %PATH%
 
-    Set Path=%path%;C:\MinGW\msys\1.0\bin;C:\MinGW\bin
+      mingw-get update
 
-    mingw-get update
+      mingw-get install mingw32-pthreads-w32-dev
 
-    mingw-get install mingw32-pthreads-w32-dev
+      make
 
-    make
+      7z.exe a skynet_mingw.zip luaclib cservice examples lualib service test platform.dll lua54.dll skynet.dll skynet.exe C:\MinGW\bin\pthreadGC-3.dll C:\MinGW\bin\libgcc_s_dw2-1.dll
 
-    7z.exe a skynet_mingw.zip luaclib cservice examples lualib service test platform.dll lua54.dll skynet.dll skynet.exe C:\MinGW\bin\pthreadGC-3.dll C:\MinGW\bin\libgcc_s_dw2-1.dll
 test_script:
-- cmd: skynet.exe autotest\config
+  - cmd: skynet.exe autotest\config
+
 artifacts:
-- path: skynet_mingw.zip
-  name: skynet_mingw
+  - path: skynet_mingw.zip
+    name: skynet_mingw
